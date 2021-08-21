@@ -1,30 +1,31 @@
-// #include <complex.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include "stb_image_write.h"
 
 typedef struct complex {
     double real;
     double imag;
 } complex;
 
-void doSomething(int, int, double, double, double, double ,double, int);
-int doMath(double, double,double, int);
-int complexMag(complex*);
-void complexPower(complex*, int);
+void doSomething(uint, uint, double, double, double, double ,double, uint);
+uint doMath(double, double,double, uint);
+uint complexMag(complex*);
+void complexPower(complex*, uint);
 void complexAdd(complex*, complex*);
 
-int debug = 0;
+uint debug = 0;
 
 int main(int argc, char *argv[]){
-
+    // ./run.bin 1920 1080 8 255 1
     // !!! Toggle print statement debugging on(1)/off(0). Default is off
     debug = 0;
-    int yRes = 889;
-    int xRes = 500;
+    uint yRes = 500;
+    uint xRes = 889;
     double thresh = 1;
-    int iter = 127;
+    uint iter = 127;
     double xMin = -2;
     double xMax = 1;
     double yMin = -1.5;
@@ -68,15 +69,15 @@ int main(int argc, char *argv[]){
 
 }
 
-void doSomething(int xResolution, int yResolution, double xMin, double xMax, double yMin, double yMax, double thresh, int iter){
+void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, double yMin, double yMax, double thresh, uint iter){
     // Add 1 to the xRes and yRes when creating a matrix to include the endpoint(s). Also, this affects how the code below is made, so I created a variable
     // instead of hardcoding the value throughout.
-    int **matrix;
-    int resOffset = 1;
-    matrix=malloc((xResolution + resOffset) * sizeof(int*));
+    uint **matrix;
+    uint resOffset = 1;
+    matrix=malloc((xResolution + resOffset) * sizeof(uint*));
     // Check for NULL
-    for(int i = 0; i < xResolution + resOffset; i++){
-        matrix[i]=malloc((yResolution + resOffset) * sizeof(int));
+    for(uint i = 0; i < xResolution + resOffset; i++){
+        matrix[i]=malloc((yResolution + resOffset) * sizeof(uint));
         //again,check for NULL
     }
 
@@ -89,9 +90,9 @@ void doSomething(int xResolution, int yResolution, double xMin, double xMax, dou
     
 
     double tempX, tempY;
-    for(int i = 0; i < (xResolution + resOffset); i++){
+    for(uint i = 0; i < (xResolution + resOffset); i++){
         tempX = xSlope*((double)i - 0) + xMin;
-        for(int j = 0; j < (yResolution + resOffset); j++){
+        for(uint j = 0; j < (yResolution + resOffset); j++){
             tempY = ySlope*(j - 0) + yMin;
             if(debug == 1){
                 printf("%d %d : %f %f\n",i,j,tempX,tempY);
@@ -101,19 +102,30 @@ void doSomething(int xResolution, int yResolution, double xMin, double xMax, dou
     }
 
     FILE* pgmimg;
+    FILE* jpgimg;
     // pgmimg = fopen("pgmimg.pgm", "wb");
     size_t fileTime = time(NULL);
     size_t fileSize = snprintf(NULL, 0, "%d_%d_%g_%lu.pgm", xResolution, yResolution, thresh, fileTime) + 1;
+    size_t fileSize2 = snprintf(NULL, 0, "%d_%d_%g_%lu.jpg", xResolution, yResolution, thresh, fileTime) + 1;
     char* filename = malloc(fileSize);
+    char* filename2 = malloc(fileSize2);
     snprintf(filename, fileSize, "%d_%d_%g_%lu.pgm", xResolution, yResolution, thresh, fileTime);
+    snprintf(filename2, fileSize2, "%d_%d_%g_%lu.jpg", xResolution, yResolution, thresh, fileTime);
+    
     pgmimg = fopen(filename, "a");
+    jpgimg = fopen(filename2, "a");
     free(filename);
+    
+    
     fprintf(pgmimg, "P2\n");
     fprintf(pgmimg, "%d %d\n",xResolution + resOffset,yResolution + resOffset);
     fprintf(pgmimg, "%d\n",iter);
     
-    for(int j = 0; j < yResolution + resOffset; j++){
-        for(int i = 0; i < xResolution + resOffset; i++){
+
+    
+    
+    for(uint j = 0; j < yResolution + resOffset; j++){
+        for(uint i = 0; i < xResolution + resOffset; i++){
             fprintf(pgmimg, "%d ",matrix[i][j]);
             if(debug == 1){
                 printf("%3d",matrix[i][j]);
@@ -126,7 +138,34 @@ void doSomething(int xResolution, int yResolution, double xMin, double xMax, dou
     }
     fclose(pgmimg);
 
-    for(int i=0;i<xResolution;i++){
+    // Vertical
+    // char *data = malloc(xResolution*yResolution*sizeof(char));
+    // for(uint j = 0; j < yResolution; j++){
+    //     for(uint i = 0; i < xResolution; i++){
+    //         data[i*yResolution + j] = (char)matrix[i][j];
+    //     }
+    // }
+    // printf("Value: %d %d %d\n",data[0],data[xResolution*yResolution/2],data[xResolution*yResolution]);
+    // stbi_write_jpg(filename2,yResolution,xResolution,1,data,100);
+
+    char *data = malloc(xResolution*yResolution*sizeof(char)*3);
+    // char *data = malloc(xResolution*yResolution*sizeof(char));
+    for(uint i = 0; i < xResolution; i++){
+        for(uint j = 0; j < yResolution; j++){
+            // data[i + j*xResolution] = (char)matrix[i][j];
+            data[3*(i + j*xResolution) + 0] = (char)matrix[i][j];
+            data[3*(i + j*xResolution) + 1] = 0;
+            data[3*(i + j*xResolution) + 2] = (char)matrix[i][j];
+        }
+    }
+    printf("Value: %d %d %d\n",data[0],data[xResolution*yResolution/2],data[xResolution*yResolution]);
+    // stbi_write_jpg(filename2,xResolution,yResolution,1,data,100);
+    stbi_write_jpg(filename2,xResolution,yResolution,3,data,100);
+
+    
+    fclose(jpgimg);
+
+    for(uint i=0;i<xResolution;i++){
         free(matrix[i]);
     }
     free(matrix);
@@ -139,14 +178,14 @@ void doSomething(int xResolution, int yResolution, double xMin, double xMax, dou
         thresh: threshold for the set that determines how quickly coordinated are discarded.
         iterationMax: how many time to loop if coordinate is part of the set.
 */
-int doMath(double c_real, double c_imag , double thresh, int iterationMax){
+uint doMath(double c_real, double c_imag , double thresh, uint iterationMax){
     // Zn_1 = Zn^2 + c;
     complex C, Zn;
     C.real = c_real;
     C.imag = c_imag;
     Zn.real = 0;
     Zn.imag = 0;
-    int numberOfIterations = -1;
+    uint numberOfIterations = 0;
     if(debug == 1){
         printf("Zn = %f + i%f\n",Zn.real,Zn.imag);
     }
@@ -157,16 +196,17 @@ int doMath(double c_real, double c_imag , double thresh, int iterationMax){
         // complexPower(&Zn,4);
 
     }
+    numberOfIterations--;
 
     return numberOfIterations;
 }
 
-int complexMag(complex *target){
+uint complexMag(complex *target){
     
     return sqrt(pow(target->real,2) + pow(target->imag,2));
 }
 
-void complexPower(complex *target, int power){
+void complexPower(complex *target, uint power){
     double r = sqrt(pow(target->real,2) + pow(target->imag,2));
     double theta = atan(target->imag/target->real);
     target->real = pow(r,power)*cos(power*theta);
