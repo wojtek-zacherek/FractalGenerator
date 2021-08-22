@@ -10,5 +10,5 @@ cleanO:
 	rm -f *.o
 
 clean:
-	rm -f *.o *.bin *.png *.jpg *.pgm
+	rm -f *.o *.bin *.png *.jpg *.pgm *.jpeg
 	
