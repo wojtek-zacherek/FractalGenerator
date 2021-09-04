@@ -76,48 +76,13 @@ int main(int argc, char *argv[]){
     
     printf("Computing for %d x %d, %d iterations, threshold of %g, ranging on x-axis %g..%g and y-axis %g..%g\n",xRes,yRes,iter,thresh,xMin,xMax,yMin,yMax);
 
-    // clock_t start = clock(), diff;
     clock_gettime(CLOCK_MONOTONIC, &start);
     doSomething(xRes, yRes, xMin, xMax, yMin, yMax, thresh, iter);
-    // diff = clock() - start;
-
     
-    // int msec = diff * 1000 / CLOCKS_PER_SEC;
-    // printf("Time taken %d seconds %d milliseconds\n", msec/1000, msec%1000);
     clock_gettime(CLOCK_MONOTONIC, &finish);
     elapsed = (finish.tv_sec - start.tv_sec);
     elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
     printf("Time taken %f \n", elapsed);
-
-    // void* args = malloc(10*sizeof(void *) + sizeof(void **));
-    // uint someval = 65523;
-    // void *rndptr = &someval;
-    // ((void **)args)[0] = &someval;
-    // ((void **)args)[1] = &someval;
-    // printf("%d\n",*(*(uint**)args));
-    
-    // printf("%p %d\n",rndptr, sizeof(rndptr));
-    // printf("%p\n",&someval);
-    // printf("%d\n",*(uint*)rndptr);
-    
-    // printf("%p\n",args);
-    // printf("%p\n",(void**)args);
-    // printf("%d\n",(*(uint*)(void**)args));
-    // printf("%d\n",*((uint *)(((void **)args)[0])));
-    // someval = 10;
-    // printf("%d\n",*((uint *)(((void **)args)[1])));
-    // printf("\n");
-
-    // uint *xStart = ((uint *)(args));
-    // uint Start = *((uint *)(args + 1*sizeof(uint*)));
-    // uint tart = *((uint *)(args + sizeof(uint*) + sizeof(uint)));
-    // uint* soemaddr = (uint*)xStart;
-    // printf("%p %d\n",(&someval),sizeof(&someval));
-    // printf("%d\n",*((uint*)(&someval)));
-    // printf("%p %d\n",soemaddr,sizeof(soemaddr));
-    // printf("%d\n",*((uint*)(soemaddr)));
-    // printf("%p\n",tart);
-
 
     return 1;
 
@@ -157,7 +122,6 @@ void *myThreadFun(void *args)
             // sem_post(&mutex);
         }
     }
-    // printf("ok7\n");
 
     return NULL;
 }
@@ -182,14 +146,6 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
         printf("Slopes: %f %f\n",xSlope, ySlope);
     }
     
-
-    // pthread_t thread_id; matrix[0][0] = 10;
-
-    // void* args = malloc(10*sizeof(void *) + sizeof(void **));
-    // uint someval = 65523;
-    // void *rndptr = &someval;
-    // ((void **)args)[0] = &someval;
-    // printf("%d\n",*((uint *)(((void **)args)[0])));
     int xDivs = 4;
     int yDivs = 4;
     int xDivStep = (xResolution + resOffset) / xDivs;
@@ -218,13 +174,6 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
             positions[k][1] = xEnd;
             positions[k][2] = yStart;
             positions[k][3] = yEnd;
-            // double xM = xMin;
-            // double yM = yMin;
-            // double thre = thresh;
-            // int ite = iter;
-            // double ySl = ySlope;
-            // double xSl = xSlope;
-            // printf("%d-%d %d-%d\n",xStart,xEnd,yStart,yEnd);
             
             // Notes!!!!
             // Need to make an array of values outside the for loop because they may be overwritten on the enxt iteration.
@@ -239,15 +188,7 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
             ((void **)argsArr[k])[7] = &iter;
             ((void **)argsArr[k])[8] = &ySlope;
             ((void **)argsArr[k])[9] = &xSlope;
-            // ((void **)argsArr[k])[4] = &xM;
-            // ((void **)argsArr[k])[5] = &yM;
-            // ((void **)argsArr[k])[6] = &thre;
-            // ((void **)argsArr[k])[7] = &ite;
-            // ((void **)argsArr[k])[8] = &ySl;
-            // ((void **)argsArr[k])[9] = &xSl;
             ((void **)argsArr[k])[10] = matrix; 
-            
-            
         }
     }
 
@@ -274,28 +215,6 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
     free(argsArr);
     free(pthreadIDs);
     sem_destroy(&mutex);
-    // double tempX, tempY;
-    // for(uint i = 0; i < (xResolution + resOffset); i++){
-    //     tempX = xSlope*((double)i - 0) + xMin;
-    //     for(uint j = 0; j < (yResolution + resOffset); j++){
-    //         tempY = ySlope*(j - 0) + yMin;
-    //         if(debug == 1){
-    //             printf("%d %d : %f %f\n",i,j,tempX,tempY);
-    //         }
-    //         matrix[i][j] = doMath(tempX, tempY, thresh, iter);
-    //         sem_wait(&mutex);
-    //         if(maxValue < matrix[i][j]){
-    //             maxValue = matrix[i][j];
-    //         }
-    //         sem_post(&mutex);
-    //     }
-    // }
-    // sem_init(&mutex, 0, 1);
-    // pthread_create(&thread_id, NULL, myThreadFun, NULL);
-    // pthread_join(thread_id, NULL);
-    // sem_destroy(&mutex);
-    // free(args);
-    
 
     FILE* pgmimg;
     // pgmimg = fopen("pgmimg.pgm", "wb");
