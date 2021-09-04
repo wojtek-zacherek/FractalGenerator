@@ -32,6 +32,7 @@ uint doMath(double, double,double, uint);
 uint complexMag(complex*);
 void complexPower(complex*, uint);
 void complexAdd(complex*, complex*);
+void complexMult(complex*, complex*);
 
 uint debug = 0;
 
@@ -43,10 +44,10 @@ int main(int argc, char *argv[]){
     uint xRes = 889;
     double thresh = 1;
     uint iter = 127;
-    double xMin = -2;
-    double xMax = 1;
-    double yMin = -1.5;
-    double yMax = 1.5;
+    double xMin = -0.3;
+    double xMax = -0.15;
+    double yMin = 0.425;
+    double yMax = 0.5;
     double ratio = 1.5;
     if(argc == 3){
         xRes = atoi(argv[1]);
@@ -146,8 +147,8 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
         printf("Slopes: %f %f\n",xSlope, ySlope);
     }
     
-    int xDivs = 4;
-    int yDivs = 4;
+    int xDivs = 8;
+    int yDivs = 8;
     int xDivStep = (xResolution + resOffset) / xDivs;
     int yDivStep = (yResolution + resOffset) / yDivs;
     void **argsArr = malloc(xDivs*yDivs*sizeof(void *));
@@ -365,11 +366,15 @@ void makeColourfull(char **target, uint **matrix, uint xResolution, uint yResolu
 */
 uint doMath(double c_real, double c_imag , double thresh, uint iterationMax){
     // Zn_1 = Zn^2 + c;
-    complex C, Zn;
+    complex C, Zn, var1, var2;
     C.real = c_real;
     C.imag = c_imag;
     Zn.real = 0;
     Zn.imag = 0;
+    var1.real = 2;
+    var1.imag = 0.25;
+    var2.real = 2;
+    var2.imag = 2;
     uint numberOfIterations = 0;
     if(debug == 1){
         printf("Zn = %f + i%f\n",Zn.real,Zn.imag);
@@ -379,7 +384,11 @@ uint doMath(double c_real, double c_imag , double thresh, uint iterationMax){
         numberOfIterations++;
         complexAdd(&Zn,&C);
         complexPower(&Zn,2);
+        complexMult(&Zn,&var2);
         // complexPower(&Zn,4);
+        // complexPower(&Zn,6);
+        // complexPower(&Zn,8);
+        
 
     }
     numberOfIterations--;
@@ -402,4 +411,9 @@ void complexPower(complex *target, uint power){
 void complexAdd(complex *target, complex *addition){
     target->real += addition->real;
     target->imag += addition->imag;
+}
+
+void complexMult(complex *target, complex *mult){
+    target->real = target->real * mult->real - target->imag * mult->imag;
+    mult->imag = target->real * mult->imag + target->imag * mult->real;
 }
