@@ -3,7 +3,10 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include "stb_image_write.h"
+
 
 typedef struct complex {
     double real;
@@ -72,20 +75,68 @@ int main(int argc, char *argv[]){
     printf("Computing for %d x %d, %d iterations, threshold of %g, ranging on x-axis %g..%g and y-axis %g..%g\n",xRes,yRes,iter,thresh,xMin,xMax,yMin,yMax);
 
     clock_t start = clock(), diff;
-    doSomething(xRes, yRes, xMin, xMax, yMin, yMax, thresh, iter);
+    // doSomething(xRes, yRes, xMin, xMax, yMin, yMax, thresh, iter);
     diff = clock() - start;
 
     int msec = diff * 1000 / CLOCKS_PER_SEC;
     printf("Time taken %d seconds %d milliseconds\n", msec/1000, msec%1000);
+
+    char *args = malloc(10*sizeof(uint) + sizeof(uint**));
+    uint someval = 23;
+    *args = 10;
+    *(args + sizeof(uint)) = 30;
+    *(args + 2* sizeof(uint)) = someval;
+
+    uint xStart = *((uint *)(args + 2*sizeof(uint)));
+    printf("%d\n",xStart);
+
+
     return 1;
 
+}
+
+uint maxValue = 0;
+sem_t mutex;
+
+void *myThreadFun(void *args)
+{
+    uint xStart =   *((uint *)(args + 0*sizeof(uint)));
+    uint xEnd =     *((uint *)(args + 1*sizeof(uint)));
+    uint yStart =   *((uint *)(args + 2*sizeof(uint)));
+    uint yEnd =     *((uint *)(args + 3*sizeof(uint)));
+    uint xMin =     *((uint *)(args + 4*sizeof(uint)));
+    uint yMin =     *((uint *)(args + 5*sizeof(uint)));
+    uint thresh =   *((uint *)(args + 6*sizeof(uint)));
+    uint iter =     *((uint *)(args + 7*sizeof(uint)));
+    uint ySlope =   *((uint *)(args + 8*sizeof(uint)));
+    uint xSlope =   *((uint *)(args + 9*sizeof(uint)));
+    uint **matrix = *((uint ***)(args + 10*sizeof(uint)));
+    
+    double tempX, tempY;
+    for(uint i = xStart; i < xEnd; i++){
+        tempX = xSlope*((double)i - 0) + xMin;
+        for(uint j = yStart; j < yEnd; j++){
+            tempY = ySlope*(j - 0) + yMin;
+            if(debug == 1){
+                printf("%d %d : %f %f\n",i,j,tempX,tempY);
+            }
+            matrix[i][j] = doMath(tempX, tempY, thresh, iter);
+            sem_wait(&mutex);
+            if(maxValue < matrix[i][j]){
+                maxValue = matrix[i][j];
+            }
+            sem_post(&mutex);
+        }
+    }
+
+    return NULL;
 }
 
 void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, double yMin, double yMax, double thresh, uint iter){
     // Add 1 to the xRes and yRes when creating a matrix to include the endpoint(s). Also, this affects how the code below is made, so I created a variable
     // instead of hardcoding the value throughout.
     uint **matrix;
-    uint maxValue = 0;
+    
     uint resOffset = 1;
     matrix=malloc((xResolution + resOffset) * sizeof(uint*));
     // Check for NULL
@@ -102,20 +153,77 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
     }
     
 
-    double tempX, tempY;
-    for(uint i = 0; i < (xResolution + resOffset); i++){
-        tempX = xSlope*((double)i - 0) + xMin;
-        for(uint j = 0; j < (yResolution + resOffset); j++){
-            tempY = ySlope*(j - 0) + yMin;
-            if(debug == 1){
-                printf("%d %d : %f %f\n",i,j,tempX,tempY);
-            }
-            matrix[i][j] = doMath(tempX, tempY, thresh, iter);
-            if(maxValue < matrix[i][j]){
-                maxValue = matrix[i][j];
-            }
+    pthread_t thread_id;
+    
+    // char *args = malloc(10*sizeof(uint) + sizeof(uint**));
+    // *(args + 0*sizeof(uint)) = 0;
+    // *(args + 1*sizeof(uint)) = 0;
+    // *(args + 2*sizeof(uint)) = 0;
+    // *(args + 3*sizeof(uint)) = 0;
+    // *(args + 4*sizeof(uint)) = xMin;
+    // *(args + 5*sizeof(uint)) = yMin;
+    // *(args + 6*sizeof(uint)) = thresh;
+    // *(args + 7*sizeof(uint)) = iter;
+    // *(args + 8*sizeof(uint)) = ySlope;
+    // *(args + 9*sizeof(uint)) = xSlope;
+    // *(args + 10*sizeof(uint)) = matrix;
+    int xDivs = 2;
+    int yDivs = 2;
+    char **argsArr = malloc(xDivs*yDivs*sizeof(char *));
+    pthread_t *pthreadIDs = malloc(xDivs*yDivs*sizeof(pthread_t));
+    sem_init(&mutex, 0, 1);
+    for(int i  = 0; i < xDivs; i++){
+        for(int j = 0; j < yDivs; j++){
+            int k = i*xDivs + j;
+            argsArr[k] = malloc(10*sizeof(uint) + sizeof(uint**));
+            *(argsArr[k] + 0*sizeof(uint)) = 0;
+            *(argsArr[k] + 1*sizeof(uint)) = 0;
+            *(argsArr[k] + 2*sizeof(uint)) = 0;
+            *(argsArr[k] + 3*sizeof(uint)) = 0;
+            *(argsArr[k] + 4*sizeof(uint)) = xMin;
+            *(argsArr[k] + 5*sizeof(uint)) = yMin;
+            *(argsArr[k] + 6*sizeof(uint)) = thresh;
+            *(argsArr[k] + 7*sizeof(uint)) = iter;
+            *(argsArr[k] + 8*sizeof(uint)) = ySlope;
+            *(argsArr[k] + 9*sizeof(uint)) = xSlope;
+            *(argsArr[k] + 10*sizeof(uint)) = matrix;
+            
+            pthread_create(&pthreadIDs[k], NULL, myThreadFun, NULL);
         }
     }
+
+    for(int i  = 0; i < xDivs; i++){
+        for(int j = 0; j < yDivs; j++){
+            int k = i*xDivs + j;
+            pthread_join(pthreadIDs[k], NULL);
+            free(argsArr[k]);
+        }
+    }
+    free(argsArr);
+    free(pthreadIDs);
+    sem_destroy(&mutex);
+    // double tempX, tempY;
+    // for(uint i = 0; i < (xResolution + resOffset); i++){
+    //     tempX = xSlope*((double)i - 0) + xMin;
+    //     for(uint j = 0; j < (yResolution + resOffset); j++){
+    //         tempY = ySlope*(j - 0) + yMin;
+    //         if(debug == 1){
+    //             printf("%d %d : %f %f\n",i,j,tempX,tempY);
+    //         }
+    //         matrix[i][j] = doMath(tempX, tempY, thresh, iter);
+    //         sem_wait(&mutex);
+    //         if(maxValue < matrix[i][j]){
+    //             maxValue = matrix[i][j];
+    //         }
+    //         sem_post(&mutex);
+    //     }
+    // }
+    // sem_init(&mutex, 0, 1);
+    // pthread_create(&thread_id, NULL, myThreadFun, NULL);
+    // pthread_join(thread_id, NULL);
+    // sem_destroy(&mutex);
+    // free(args);
+    
 
     FILE* pgmimg;
     // pgmimg = fopen("pgmimg.pgm", "wb");
