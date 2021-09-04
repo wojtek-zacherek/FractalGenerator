@@ -7,6 +7,8 @@
 #include <semaphore.h>
 #include "stb_image_write.h"
 
+struct timespec start, finish;
+double elapsed;
 
 typedef struct complex {
     double real;
@@ -25,7 +27,7 @@ typedef struct colorSelection {
 } colorSelection;
 
 void doSomething(uint, uint, double, double, double, double ,double, uint);
-void makeColourfull(char**, uint**, uint, uint, uint, uint);
+void makeColourfull(char**, uint**, uint, uint, uint);
 uint doMath(double, double,double, uint);
 uint complexMag(complex*);
 void complexPower(complex*, uint);
@@ -74,21 +76,47 @@ int main(int argc, char *argv[]){
     
     printf("Computing for %d x %d, %d iterations, threshold of %g, ranging on x-axis %g..%g and y-axis %g..%g\n",xRes,yRes,iter,thresh,xMin,xMax,yMin,yMax);
 
-    clock_t start = clock(), diff;
-    // doSomething(xRes, yRes, xMin, xMax, yMin, yMax, thresh, iter);
-    diff = clock() - start;
+    // clock_t start = clock(), diff;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    doSomething(xRes, yRes, xMin, xMax, yMin, yMax, thresh, iter);
+    // diff = clock() - start;
 
-    int msec = diff * 1000 / CLOCKS_PER_SEC;
-    printf("Time taken %d seconds %d milliseconds\n", msec/1000, msec%1000);
+    
+    // int msec = diff * 1000 / CLOCKS_PER_SEC;
+    // printf("Time taken %d seconds %d milliseconds\n", msec/1000, msec%1000);
+    clock_gettime(CLOCK_MONOTONIC, &finish);
+    elapsed = (finish.tv_sec - start.tv_sec);
+    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+    printf("Time taken %f \n", elapsed);
 
-    char *args = malloc(10*sizeof(uint) + sizeof(uint**));
-    uint someval = 23;
-    *args = 10;
-    *(args + sizeof(uint)) = 30;
-    *(args + 2* sizeof(uint)) = someval;
+    // void* args = malloc(10*sizeof(void *) + sizeof(void **));
+    // uint someval = 65523;
+    // void *rndptr = &someval;
+    // ((void **)args)[0] = &someval;
+    // ((void **)args)[1] = &someval;
+    // printf("%d\n",*(*(uint**)args));
+    
+    // printf("%p %d\n",rndptr, sizeof(rndptr));
+    // printf("%p\n",&someval);
+    // printf("%d\n",*(uint*)rndptr);
+    
+    // printf("%p\n",args);
+    // printf("%p\n",(void**)args);
+    // printf("%d\n",(*(uint*)(void**)args));
+    // printf("%d\n",*((uint *)(((void **)args)[0])));
+    // someval = 10;
+    // printf("%d\n",*((uint *)(((void **)args)[1])));
+    // printf("\n");
 
-    uint xStart = *((uint *)(args + 2*sizeof(uint)));
-    printf("%d\n",xStart);
+    // uint *xStart = ((uint *)(args));
+    // uint Start = *((uint *)(args + 1*sizeof(uint*)));
+    // uint tart = *((uint *)(args + sizeof(uint*) + sizeof(uint)));
+    // uint* soemaddr = (uint*)xStart;
+    // printf("%p %d\n",(&someval),sizeof(&someval));
+    // printf("%d\n",*((uint*)(&someval)));
+    // printf("%p %d\n",soemaddr,sizeof(soemaddr));
+    // printf("%d\n",*((uint*)(soemaddr)));
+    // printf("%p\n",tart);
 
 
     return 1;
@@ -100,18 +128,18 @@ sem_t mutex;
 
 void *myThreadFun(void *args)
 {
-    uint xStart =   *((uint *)(args + 0*sizeof(uint)));
-    uint xEnd =     *((uint *)(args + 1*sizeof(uint)));
-    uint yStart =   *((uint *)(args + 2*sizeof(uint)));
-    uint yEnd =     *((uint *)(args + 3*sizeof(uint)));
-    uint xMin =     *((uint *)(args + 4*sizeof(uint)));
-    uint yMin =     *((uint *)(args + 5*sizeof(uint)));
-    uint thresh =   *((uint *)(args + 6*sizeof(uint)));
-    uint iter =     *((uint *)(args + 7*sizeof(uint)));
-    uint ySlope =   *((uint *)(args + 8*sizeof(uint)));
-    uint xSlope =   *((uint *)(args + 9*sizeof(uint)));
-    uint **matrix = *((uint ***)(args + 10*sizeof(uint)));
-    
+    uint xStart =   *((uint *)(((void **)args)[0]));
+    uint xEnd =     *((uint *)(((void **)args)[1]));
+    uint yStart =   *((uint *)(((void **)args)[2]));
+    uint yEnd =     *((uint *)(((void **)args)[3]));
+    double xMin =     *((double *)(((void **)args)[4]));
+    double yMin =     *((double *)(((void **)args)[5]));
+    double thresh =   *((double *)(((void **)args)[6]));
+    uint iter =     *((uint *)(((void **)args)[7]));
+    double ySlope =   *((double *)(((void **)args)[8]));
+    double xSlope =   *((double *)(((void **)args)[9]));
+    uint **matrix = ((uint **)(((void **)args)[10])); 
+
     double tempX, tempY;
     for(uint i = xStart; i < xEnd; i++){
         tempX = xSlope*((double)i - 0) + xMin;
@@ -120,14 +148,16 @@ void *myThreadFun(void *args)
             if(debug == 1){
                 printf("%d %d : %f %f\n",i,j,tempX,tempY);
             }
-            matrix[i][j] = doMath(tempX, tempY, thresh, iter);
-            sem_wait(&mutex);
+            uint val = doMath(tempX, tempY, thresh, iter);
+            matrix[i][j] = val;
+            // sem_wait(&mutex);
             if(maxValue < matrix[i][j]){
                 maxValue = matrix[i][j];
             }
-            sem_post(&mutex);
+            // sem_post(&mutex);
         }
     }
+    // printf("ok7\n");
 
     return NULL;
 }
@@ -153,42 +183,78 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
     }
     
 
-    pthread_t thread_id;
-    
-    // char *args = malloc(10*sizeof(uint) + sizeof(uint**));
-    // *(args + 0*sizeof(uint)) = 0;
-    // *(args + 1*sizeof(uint)) = 0;
-    // *(args + 2*sizeof(uint)) = 0;
-    // *(args + 3*sizeof(uint)) = 0;
-    // *(args + 4*sizeof(uint)) = xMin;
-    // *(args + 5*sizeof(uint)) = yMin;
-    // *(args + 6*sizeof(uint)) = thresh;
-    // *(args + 7*sizeof(uint)) = iter;
-    // *(args + 8*sizeof(uint)) = ySlope;
-    // *(args + 9*sizeof(uint)) = xSlope;
-    // *(args + 10*sizeof(uint)) = matrix;
-    int xDivs = 2;
-    int yDivs = 2;
-    char **argsArr = malloc(xDivs*yDivs*sizeof(char *));
+    // pthread_t thread_id; matrix[0][0] = 10;
+
+    // void* args = malloc(10*sizeof(void *) + sizeof(void **));
+    // uint someval = 65523;
+    // void *rndptr = &someval;
+    // ((void **)args)[0] = &someval;
+    // printf("%d\n",*((uint *)(((void **)args)[0])));
+    int xDivs = 4;
+    int yDivs = 4;
+    int xDivStep = (xResolution + resOffset) / xDivs;
+    int yDivStep = (yResolution + resOffset) / yDivs;
+    void **argsArr = malloc(xDivs*yDivs*sizeof(void *));
     pthread_t *pthreadIDs = malloc(xDivs*yDivs*sizeof(pthread_t));
+    uint **positions = malloc(5*xDivs*yDivs*sizeof(uint));
+    // Check for NULL
+    for(uint i = 0; i < xDivs*yDivs; i++){
+        positions[i]=malloc(4 * sizeof(uint));
+        //again,check for NULL
+    }
     sem_init(&mutex, 0, 1);
+    printf("Starting\n");
+    for(int i  = 0; i < xDivs; i++){
+        for(int j = 0; j < yDivs; j++){
+            
+            int k = i*xDivs + j;
+            argsArr[k] = malloc(12*sizeof(void *) + sizeof(void **));
+            
+            uint xStart = (xDivs - (i + 1)) * xDivStep;
+            uint xEnd = xStart + xDivStep;
+            uint yStart = (yDivs - (j + 1)) * yDivStep;
+            uint yEnd = yStart + yDivStep;
+            positions[k][0] = xStart;
+            positions[k][1] = xEnd;
+            positions[k][2] = yStart;
+            positions[k][3] = yEnd;
+            // double xM = xMin;
+            // double yM = yMin;
+            // double thre = thresh;
+            // int ite = iter;
+            // double ySl = ySlope;
+            // double xSl = xSlope;
+            // printf("%d-%d %d-%d\n",xStart,xEnd,yStart,yEnd);
+            
+            // Notes!!!!
+            // Need to make an array of values outside the for loop because they may be overwritten on the enxt iteration.
+
+            ((void **)argsArr[k])[0] = &positions[k][0];     
+            ((void **)argsArr[k])[1] = &positions[k][1];
+            ((void **)argsArr[k])[2] = &positions[k][2];
+            ((void **)argsArr[k])[3] = &positions[k][3];
+            ((void **)argsArr[k])[4] = &xMin;
+            ((void **)argsArr[k])[5] = &yMin;
+            ((void **)argsArr[k])[6] = &thresh;
+            ((void **)argsArr[k])[7] = &iter;
+            ((void **)argsArr[k])[8] = &ySlope;
+            ((void **)argsArr[k])[9] = &xSlope;
+            // ((void **)argsArr[k])[4] = &xM;
+            // ((void **)argsArr[k])[5] = &yM;
+            // ((void **)argsArr[k])[6] = &thre;
+            // ((void **)argsArr[k])[7] = &ite;
+            // ((void **)argsArr[k])[8] = &ySl;
+            // ((void **)argsArr[k])[9] = &xSl;
+            ((void **)argsArr[k])[10] = matrix; 
+            
+            
+        }
+    }
+
     for(int i  = 0; i < xDivs; i++){
         for(int j = 0; j < yDivs; j++){
             int k = i*xDivs + j;
-            argsArr[k] = malloc(10*sizeof(uint) + sizeof(uint**));
-            *(argsArr[k] + 0*sizeof(uint)) = 0;
-            *(argsArr[k] + 1*sizeof(uint)) = 0;
-            *(argsArr[k] + 2*sizeof(uint)) = 0;
-            *(argsArr[k] + 3*sizeof(uint)) = 0;
-            *(argsArr[k] + 4*sizeof(uint)) = xMin;
-            *(argsArr[k] + 5*sizeof(uint)) = yMin;
-            *(argsArr[k] + 6*sizeof(uint)) = thresh;
-            *(argsArr[k] + 7*sizeof(uint)) = iter;
-            *(argsArr[k] + 8*sizeof(uint)) = ySlope;
-            *(argsArr[k] + 9*sizeof(uint)) = xSlope;
-            *(argsArr[k] + 10*sizeof(uint)) = matrix;
-            
-            pthread_create(&pthreadIDs[k], NULL, myThreadFun, NULL);
+            pthread_create(&pthreadIDs[k], NULL, myThreadFun, (void *)argsArr[k]);
         }
     }
 
@@ -197,8 +263,14 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
             int k = i*xDivs + j;
             pthread_join(pthreadIDs[k], NULL);
             free(argsArr[k]);
+            // printf("Join %d\n",k);
         }
     }
+    for(uint i = 0; i < xDivs*yDivs; i++){
+        free(positions[i]);
+        //again,check for NULL
+    }
+    free(positions);
     free(argsArr);
     free(pthreadIDs);
     sem_destroy(&mutex);
@@ -263,7 +335,7 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
 
 
     char *data;
-    makeColourfull(&data, matrix, xResolution, yResolution, iter, maxValue);
+    makeColourfull(&data, matrix, xResolution, yResolution, iter);
     printf("Value: %d %d %d\n",data[0],data[xResolution*yResolution/2 + xResolution/2],data[xResolution*yResolution]);
     // stbi_write_jpg(filename2,xResolution,yResolution,1,data,100);
     stbi_write_jpg(filename2,xResolution,yResolution,3,data,90);
@@ -280,7 +352,7 @@ void doSomething(uint xResolution, uint yResolution, double xMin, double xMax, d
     free(filename3);
 }
 
-void makeColourfull(char **target, uint **matrix, uint xResolution, uint yResolution, uint iter, uint maxValue){
+void makeColourfull(char **target, uint **matrix, uint xResolution, uint yResolution, uint iter){
     int numColors = iter;
     char maxRGBValue = 255;
     struct rgb colors[numColors];
