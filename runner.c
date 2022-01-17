@@ -414,6 +414,8 @@ void complexAdd(complex *target, complex *addition){
 }
 
 void complexMult(complex *target, complex *mult){
-    target->real = target->real * mult->real - target->imag * mult->imag;
-    mult->imag = target->real * mult->imag + target->imag * mult->real;
+    int x = target->real * mult->real - target->imag * mult->imag;
+    int y = target->real * mult->imag + target->imag * mult->real;
+    target->real = x;
+    target->imag = y;
 }
