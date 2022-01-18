@@ -12,7 +12,7 @@ run.bin: run.o
 	gcc -pthread run.o -o run.bin -lm
 
 runCUDA.bin: runnerCUDA.cu
-	nvcc runnerCUDA.cu -o runCUDA.bin -lm
+	nvcc runnerCUDA.cu -o runCUDA.bin
 
 # runInt.bin: runInt.o
 # 	gcc runInt.o -o runInt.bin -lm

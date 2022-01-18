@@ -6,7 +6,7 @@
 #include "stb_image_write.h"
 
 
-#define DEBUG 1
+#define DEBUG 0
 
 typedef struct complex {
     double real;
@@ -28,51 +28,114 @@ __device__ volatile complex var1 = {.real = 2, .imag = 0.25},
     var2 = {.real = 2, .imag = 2};
 __device__ volatile int foiterationsMaxund = 0;
 __device__ volatile int iterationsMax = 127;
-__device__ volatile double thresh = 1;
+__device__ volatile double thresh = 2;
+int iterationsMaxHost = 889127;
 
 struct timespec start, finish;
 double elapsed;
+#define xResDEF 1920
+#define yResDEF 1015
+#define myTestX 29
+#define myTestY 4
+#define DEBUG_ID (myTestX+1)*(myTestY+1)-1
+__device__ volatile uint yResD = yResDEF;
+__device__ volatile uint xResD = xResDEF;
+uint yRes = yResDEF;
+uint xRes = xResDEF;
 
 int doSomething(uint, uint, double, double, double, double ,double, uint);
+void makeColourfull(char**, double*, uint, uint, uint);
 
-
-__global__ void doMath(double *a, double *b, int *c, int n){
+__global__ void doMath(double *a, double *b, double *c, int n){
 
     int ix=threadIdx.x+blockIdx.x*blockDim.x;
     int iy=threadIdx.y+blockIdx.y*blockDim.y;
 
     unsigned int idx=ix+iy*n;
-    printf("%d - %d - %d\n",threadIdx.x, blockIdx.x, idx);
+    // printf("%d - %d - %d\n",threadIdx.x, blockIdx.x, idx);
 
-    if (threadIdx.x < 15 && blockIdx.x < 10){
+    // c[threadIdx.x*yResD + blockIdx.x] = idx;
+    // c[idx] = idx;
+
+    int myX = ix/(xResD+1);
+    int myY = ix - (ix/(xResD+1)*(xResD+1));
+    if (idx < (xResD+1)*(yResD+1)){
         complex Zn = {.real = 0, .imag = 0},
-            C = {.real = a[threadIdx.x], .imag = b[blockIdx.x]};
+            // C = {.real = b[myX], .imag = a[myY]};
+            C = {.real = a[myY], .imag = b[myX]};
         
         uint numberOfIterations = 0;
-        uint magnitude = sqrt(pow((&Zn)->real,2) + pow((&Zn)->imag,2));
+        double magnitude = sqrt(pow((&Zn)->real,2) + pow((&Zn)->imag,2));
+        
+        if(idx == DEBUG_ID){
+            printf("Starting: C=%f+%fi\n",(&C)->real,(&C)->imag);
+            // printf("Starting: C=%f+%fi\n",a[0],b[0]);
+            printf("Magnitude: Zn=%f+%fi -> %f\n",(&Zn)->real,(&Zn)->imag, magnitude);
+            printf("Indicies: %d,%d   Vals: %4f + %4fi\n",myX, myY, (&C)->real,(&C)->imag);
+        }
         
 
         while(magnitude <= (uint)thresh && numberOfIterations < iterationsMax){
+            if(idx == DEBUG_ID){
+                printf("Iter %d ------------------------------------\n",numberOfIterations);
+            }
+
             numberOfIterations++;
-            // complexAdd(&Zn,&C); 
-            (&Zn)->real += (&C)->real;
-            (&Zn)->imag += (&C)->imag;
             
             // complexPower(&Zn,2)
             double r = sqrt(pow((&Zn)->real,2) + pow((&Zn)->imag,2));
-            double theta = atan((&Zn)->imag/(&Zn)->real);
+            double theta;
+            if((&Zn)->real == 0){
+                if((&Zn)->imag >= 0){
+                    theta = 3.1415/2;
+                }else{
+                    theta = -3.1415/2;
+                }
+            }else{
+                theta = atan((&Zn)->imag/(&Zn)->real);
+            }
             (&Zn)->real = pow(r,2)*cos(2*theta);
             (&Zn)->imag = pow(r,2)*sin(2*theta);
+            // double x = (&Zn)->real * (&Zn)->real - (&Zn)->imag * (&Zn)->imag;
+            // double y = (&Zn)->real * (&Zn)->imag + (&Zn)->imag * (&Zn)->real;
+            // (&Zn)->real = x;
+            // (&Zn)->imag = y;
+            if(idx == DEBUG_ID){
+                printf("Complex Power: Zn=%f+%fi: r=%f, theta=%f\n",(&Zn)->real,(&Zn)->imag,r,theta);
+                // printf("Complex Power: Zn=%f+%fi\n",(&Zn)->real,(&Zn)->imag);
+            }
+
+            // complexAdd(&Zn,&C); 
+            (&Zn)->real += (&C)->real;
+            (&Zn)->imag += (&C)->imag;
+            if(idx == DEBUG_ID){
+                printf("Complex Add: Zn=%f+%fi\n",(&Zn)->real,(&Zn)->imag);
+            }
 
             // complexMult(&Zn,&var2);
-            int x = (&Zn)->real * (&var2)->real - (&Zn)->imag * (&var2)->imag;
-            int y = (&Zn)->real * (&var2)->imag + (&Zn)->imag * (&var2)->real;
-            (&Zn)->real = x;
-            (&Zn)->imag = y;
+            // double x = (&Zn)->real * (&var2)->real - (&Zn)->imag * (&var2)->imag;
+            // double y = (&Zn)->real * (&var2)->imag + (&Zn)->imag * (&var2)->real;
+            // (&Zn)->real = x;
+            // (&Zn)->imag = y;
+            // if(idx == DEBUG_ID){
+            //     printf("Complex Mult: Zn=%f+%fi\n",(&Zn)->real,(&Zn)->imag);
+            // }
+
+            magnitude = sqrt(pow((&Zn)->real,2) + pow((&Zn)->imag,2));
+            if(idx == DEBUG_ID){
+                printf("Magnitude: Zn=%f+%fi -> %f\n",(&Zn)->real,(&Zn)->imag, magnitude);
+            }
         }
-        
-        printf("%d - %d - %d\n",threadIdx.x, blockIdx.x, numberOfIterations-1);
-        c[threadIdx.x*10 + blockIdx.x] = numberOfIterations-1;
+        if(idx <= 0){
+            printf("%d - %d - %d\n",threadIdx.x, blockIdx.x, numberOfIterations-1);
+        }
+        // c[threadIdx.x*yResD + blockIdx.x] = numberOfIterations-1;
+        // c[threadIdx.x*yResD + blockIdx.x] = threadIdx.x*yResD + blockIdx.x;
+        c[idx] = numberOfIterations-1;
+        // c[idx] = idx;
+        // c[idx] = a[myY];
+        // c[idx] = b[0];
+        // c[idx] = ix - (ix/(xResD+1)*(xResD+1));
     }
 }
 
@@ -80,15 +143,18 @@ __global__ void doMath(double *a, double *b, int *c, int n){
 int main( int argc, char* argv[] ){
     // uint yRes = 500;
     // uint xRes = 889;
-    uint yRes = 20;
-    uint xRes = 25;
+    
     double thresh = 1;
     uint iter = 127;
+    // double xMin = -1;
+    // double xMax = 1;
+    // double yMin = -2;
+    // double yMax = 1;
     double xMin = -2;
     double xMax = 1;
     double yMin = -1;
     double yMax = 1;
-    double ratio = 1.5;
+    // double ratio = 1.5;
 
 
     // if(argc == 3){
@@ -138,25 +204,25 @@ int doSomething(uint xResolution, uint yResolution, double xMin, double xMax, do
     double *h_x;
     double *h_y;
     //Host output vector
-    int *h_c;
+    double *h_c;
  
     // Device input vectors
     double *d_x;
     double *d_y;
     //Device output vector
-    int *d_c;
+    double *d_c;
 
     uint resOffset = 1;
 
     //
     uint xBytes = (xResolution + resOffset) * sizeof(double);
     uint yBytes = (yResolution + resOffset) * sizeof(double);
-    uint cBytes = ((xResolution + resOffset) * (yResolution + resOffset)) * sizeof(int);
+    uint cBytes = ((xResolution + resOffset) * (yResolution + resOffset)) * sizeof(double);
 
     // Allocate memory for each vector on host
     h_x = (double*)malloc(xBytes);
     h_y = (double*)malloc(yBytes);
-    h_c = (int*)malloc(cBytes);
+    h_c = (double*)malloc(cBytes);
 
     // Allocate memory for each vector on GPU
     cudaMalloc(&d_x, xBytes);
@@ -171,40 +237,42 @@ int doSomething(uint xResolution, uint yResolution, double xMin, double xMax, do
         printf("Slopes: %f %f\n",xSlope, ySlope);
     }
     
-    int xDivs = 1;
-    int yDivs = 1;
-    int xDivStep = (xResolution + resOffset) / xDivs;
-    int yDivStep = (yResolution + resOffset) / yDivs;
 
+    // Indicies
+    int xStart = 0;
+    int xEnd = xResolution + resOffset;
+    int yStart = 0;
+    int yEnd = yResolution + resOffset;
 
-    uint xStart = (xDivs - (0 + 1)) * xDivStep;
-    uint xEnd = xStart + xDivStep;
-    uint yStart = (yDivs - (0 + 1)) * yDivStep;
-    uint yEnd = yStart + yDivStep;
-
+    
 
     // double tempX, tempY;
-    for(uint l = xStart; l < xEnd; l++){
+    printf("h_x\n");
+    for(int l = xStart; l < xEnd; l++){
         h_x[l] = xSlope*((double)l - 0) + xMin;
         if(DEBUG == 1){
             printf("%d : %f\n",l,h_x[l]);
         }
     }
-    for(uint l = yStart; l < yEnd; l++){
+    printf("h_y\n");
+    for(int l = yStart; l < yEnd; l++){
         h_y[l] = ySlope*((double)l - 0) + yMin;
         if(DEBUG == 1){
             printf("%d : %f\n",l,h_y[l]);
         }
     }
-
+    printf("%f...%f\n",h_y[0],h_y[yEnd-1]);
 
     // Copy host vectors to device
     cudaMemcpy( d_x, h_x, xBytes, cudaMemcpyHostToDevice);
     cudaMemcpy( d_y, h_y, yBytes, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_c, h_c, cBytes, cudaMemcpyHostToDevice);
+    //
 
     // int blockSize, gridSize;
-    dim3 gridSize(yResolution,1);
-    dim3 blockSize(xResolution,1);
+    // Multiple of 32.
+    dim3 gridSize(xResolution + 1,1);
+    dim3 blockSize(yResolution + 1,1);
     // Number of threads in each thread block
     // blockSize = xResolution;
     // Number of thread blocks in grid
@@ -213,7 +281,7 @@ int doSomething(uint xResolution, uint yResolution, double xMin, double xMax, do
     // printf("blockSize = %d, gridSize = %d\n",blockSize,gridSize);
 
     // Execute the kernel
-    doMath<<<gridSize, blockSize>>>(d_x, d_x, d_c, n);
+    doMath<<<gridSize, blockSize>>>(d_x, d_y, d_c, n);
 
     // Copy array back to host
     cudaMemcpy( h_c, d_c, cBytes, cudaMemcpyDeviceToHost );
@@ -223,12 +291,27 @@ int doSomething(uint xResolution, uint yResolution, double xMin, double xMax, do
 
     printf("Hello\n");
     for(uint i = 0; i < xResolution; i++){
-        printf("what\n");
+        // printf("what\n");
         for(uint j = 0; j < yResolution; j++){
-            // printf("%d,%d : %d\n", i, j, h_c[i*yResolution + j]);
+            // printf("%4d", h_c[i*yResolution + j]);
+            // printf("%4d",h_c[j * (xResolution + resOffset) + i]);
+        }
+        if(DEBUG == 1){
+            // printf("\n");
         }
     }
-    printf("Hello\n");
+    printf("Tested Indicies: %d,%d    Vals: %4f + %4fi\n",myTestX,myTestY,h_x[myTestX],h_y[myTestY]);
+
+    // for(uint i = 0; i < xResolution + resOffset; i++){
+    //     for(uint j = 0; j < yResolution + resOffset; j++){
+    //         if(DEBUG == 1){
+    //             printf("%4d",h_c[ i*(yResolution+resOffset) + j]);
+    //         }
+    //     }
+    //     if(DEBUG == 1){
+    //         printf("\n");
+    //     }
+    // }
 
 
     // matrix[i][j] = val;
@@ -246,7 +329,7 @@ int doSomething(uint xResolution, uint yResolution, double xMin, double xMax, do
     size_t fileSize2 = snprintf(NULL, 0, "%d_%d_%g_%lu.jpeg", xResolution, yResolution, thresh, fileTime) + 1;
     size_t fileSize3 = snprintf(NULL, 0, "%d_%d_%g_%lu.png", xResolution, yResolution, thresh, fileTime) + 1;
     char* filename = (char *)malloc(fileSize);
-    char* filename2 = (char *)malloc(fileSize2);
+    char* filename2 = (char *)malloc(fileSize2); 
     char* filename3 = (char *)malloc(fileSize3);
     snprintf(filename, fileSize, "%d_%d_%g_%lu.pgm", xResolution, yResolution, thresh, fileTime);
     snprintf(filename2, fileSize2, "%d_%d_%g_%lu.jpeg", xResolution, yResolution, thresh, fileTime);
@@ -261,11 +344,12 @@ int doSomething(uint xResolution, uint yResolution, double xMin, double xMax, do
     fprintf(pgmimg, "%d\n",iter);
     
 
+
     for(uint j = 0; j < yResolution + resOffset; j++){
         for(uint i = 0; i < xResolution + resOffset; i++){
-            fprintf(pgmimg, "%d ",h_c[i * (xResolution + resOffset) + j]);
+            fprintf(pgmimg, "%d ",(int)h_c[j * (xResolution + resOffset) + i]);
             if(DEBUG == 1){
-                printf("%4d",h_c[i * (xResolution + resOffset) + j]);
+                printf("%4d",(int)h_c[j * (xResolution + resOffset) + i]);
             }
         }
         if(DEBUG == 1){
@@ -277,8 +361,13 @@ int doSomething(uint xResolution, uint yResolution, double xMin, double xMax, do
 
 
 
-
-
+    char *data;
+    makeColourfull(&data, h_c, xResolution, yResolution, iter);
+    printf("Value: %d %d %d\n",data[0],data[xResolution*yResolution/2 + xResolution/2],data[xResolution*yResolution]);
+    // stbi_write_jpg(filename2,xResolution,yResolution,1,data,100);
+    stbi_write_jpg(filename2,xResolution,yResolution,3,data,90);
+    // stbi_write_png(filename3,xResolution,yResolution,3,data,0);
+    free(data);
 
     
     // Release device memory
@@ -294,6 +383,94 @@ int doSomething(uint xResolution, uint yResolution, double xMin, double xMax, do
     return 0;
     
 
+}
+
+
+
+void makeColourfull(char **target, double *matrix, uint xResolution, uint yResolution, uint iter){
+    int numColors = iter;
+    char maxRGBValue = 255;
+    struct rgb colors[numColors];
+    struct rgb redwhite[512];
+    struct rgb blue[256];
+    struct rgb bluewhite[256];
+    struct rgb blackredorangewhite[256+128+128];
+    colorSelection colorSelected;
+
+    colorSelected.selection = redwhite; colorSelected.numEntries = 511;
+    colorSelected.selection = colors; colorSelected.numEntries = iter;
+    colorSelected.selection = bluewhite; colorSelected.numEntries = 255;
+    colorSelected.selection = blue; colorSelected.numEntries = 255;
+    colorSelected.selection = blackredorangewhite; colorSelected.numEntries = 511;
+
+    for(int i = 0; i < 256; i++){
+        blue[i].r = 0;
+        blue[i].g = 0;
+        blue[i].b = i;
+    }
+
+    for(int i = 0; i < 256; i++){
+        blackredorangewhite[i].r = i;
+        blackredorangewhite[i].g = 0;
+        blackredorangewhite[i].b = 0;
+    }
+    for(int i = 0; i < 128; i++){
+        blackredorangewhite[i + 256].r = 255;
+        blackredorangewhite[i + 256].g = i;
+        blackredorangewhite[i + 256].b = 0;
+    }
+    for(int i = 0; i < 128; i++){
+        blackredorangewhite[i + 256 + 128].r = 255;
+        blackredorangewhite[i + 256 + 128].g = 128 + i;
+        blackredorangewhite[i + 256 + 128].b = 2*i;
+    }
+
+    for(int i = 0; i < 128; i++){
+        bluewhite[i].r = 0;
+        bluewhite[i].g = 0;
+        bluewhite[i].b = 2*i;
+    }
+    for(int i = 0; i < 128; i++){
+        bluewhite[i + 128].r = 2*i;
+        bluewhite[i + 128].g = 2*i;
+        bluewhite[i + 128].b = 255;
+    }
+
+    for(int i = 0; i < numColors; i++){
+        colors[i].r = i;
+        colors[i].g = 0;
+        colors[i].b = 0;
+    }
+
+
+    for(int i = 0; i < 256; i++){
+        redwhite[i].r = i;
+        redwhite[i].g = 0;
+        redwhite[i].b = 0;
+    }
+    for(int i = 0; i < 256; i++){
+        redwhite[i + 256].r = 255;
+        redwhite[i + 256].g = i;
+        redwhite[i + 256].b = i;
+    }
+
+    // ratio = colorSelected.numEntries/maxValue
+    printf("max = %d\n",127);
+    
+    *target = (char*)malloc(xResolution*yResolution*sizeof(char)*3);
+    char *data = *target;
+    uint index = 0;
+    uint index2 = 0;
+    for(uint i = 0; i < xResolution; i++){
+        for(uint j = 0; j < yResolution; j++){
+            index = (int)(((long)matrix[i + j*(xResolution+1)] * colorSelected.numEntries) / 127);
+            index2 = 3*(i + j*xResolution);
+            
+            data[index2 + 0] = colorSelected.selection[index].r;
+            data[index2 + 1] = colorSelected.selection[index].g;
+            data[index2 + 2] = colorSelected.selection[index].b;
+        }
+    }
 }
 
 
