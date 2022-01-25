@@ -30,7 +30,7 @@ void doSomething(uint, uint, double, double, double, double ,double, uint);
 void makeColourfull(char**, uint**, uint, uint, uint);
 uint doMath(double, double,double, uint);
 uint complexMag(complex*);
-void complexPower(complex*, uint);
+void complexPower(complex*, double);
 void complexAdd(complex*, complex*);
 void complexMult(complex*, complex*);
 
@@ -44,10 +44,14 @@ int main(int argc, char *argv[]){
     uint xRes = 889;
     double thresh = 1;
     uint iter = 127;
-    double xMin = -0.3;
+    double xMin = -0.45;
     double xMax = -0.15;
-    double yMin = 0.425;
-    double yMax = 0.5;
+    double yMin = 0.4;
+    double yMax = .6;
+    // double xMin = -2;
+    // double xMax = 1;
+    // double yMin = -1;
+    // double yMax = 1;
     double ratio = 1.5;
     if(argc == 3){
         xRes = atoi(argv[1]);
@@ -373,8 +377,8 @@ uint doMath(double c_real, double c_imag , double thresh, uint iterationMax){
     Zn.imag = 0;
     var1.real = 2;
     var1.imag = 0.25;
-    var2.real = 2;
-    var2.imag = 2;
+    var2.real = .2;
+    var2.imag = 0.33;
     uint numberOfIterations = 0;
     if(debug == 1){
         printf("Zn = %f + i%f\n",Zn.real,Zn.imag);
@@ -384,7 +388,8 @@ uint doMath(double c_real, double c_imag , double thresh, uint iterationMax){
         numberOfIterations++;
         complexAdd(&Zn,&C);
         complexPower(&Zn,2);
-        complexMult(&Zn,&var2);
+        // complexMult(&Zn,&var2);
+        complexAdd(&Zn,&var2);
         // complexPower(&Zn,4);
         // complexPower(&Zn,6);
         // complexPower(&Zn,8);
@@ -401,7 +406,7 @@ uint complexMag(complex *target){
     return sqrt(pow(target->real,2) + pow(target->imag,2));
 }
 
-void complexPower(complex *target, uint power){
+void complexPower(complex *target, double power){
     double r = sqrt(pow(target->real,2) + pow(target->imag,2));
     double theta = atan(target->imag/target->real);
     target->real = pow(r,power)*cos(power*theta);
@@ -414,8 +419,8 @@ void complexAdd(complex *target, complex *addition){
 }
 
 void complexMult(complex *target, complex *mult){
-    int x = target->real * mult->real - target->imag * mult->imag;
-    int y = target->real * mult->imag + target->imag * mult->real;
+    double x = target->real * mult->real - target->imag * mult->imag;
+    double y = target->real * mult->imag + target->imag * mult->real;
     target->real = x;
     target->imag = y;
 }
