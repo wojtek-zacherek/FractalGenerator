@@ -115,12 +115,12 @@ __global__ void doMath(double *a, double *b, double *c, int n){
                 // printf("Complex Power: Zn=%f+%fi\n",(&Zn)->real,(&Zn)->imag);
             }
 
-            // complexAdd(&Zn,&var2); 
-            (&Zn)->real += (&var2)->real;
-            (&Zn)->imag += (&var2)->imag;
-            if(idx == DEBUG_ID){
-                printf("Complex Add: Zn=%f+%fi\n",(&Zn)->real,(&Zn)->imag);
-            }
+            // // complexAdd(&Zn,&var2); 
+            // (&Zn)->real += (&var2)->real;
+            // (&Zn)->imag += (&var2)->imag;
+            // if(idx == DEBUG_ID){
+            //     printf("Complex Add: Zn=%f+%fi\n",(&Zn)->real,(&Zn)->imag);
+            // }
 
             
 
@@ -158,18 +158,18 @@ int main( int argc, char* argv[] ){
     
     double thresh = 1;
     uint iter = 127+128;
-    double xMin = -0.45;
-    double xMax = -0.15;
-    double yMin = 0.4;
-    double yMax = .6;
+    // double xMin = -0.45;
+    // double xMax = -0.15;
+    // double yMin = 0.4;
+    // double yMax = .6;
     // double xMin = 0;
     // double xMax = 0.35;
     // double yMin = 0.65;
     // double yMax = .9;
-    // double xMin = -2;
-    // double xMax = 1;
-    // double yMin = -1;
-    // double yMax = 1;
+    double xMin = -2;
+    double xMax = 1;
+    double yMin = -1;
+    double yMax = 1;
     // double ratio = 1.5;
 
 

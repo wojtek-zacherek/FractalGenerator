@@ -44,14 +44,14 @@ int main(int argc, char *argv[]){
     uint xRes = 889;
     double thresh = 1;
     uint iter = 127;
-    double xMin = -0.45;
-    double xMax = -0.15;
-    double yMin = 0.4;
-    double yMax = .6;
-    // double xMin = -2;
-    // double xMax = 1;
-    // double yMin = -1;
-    // double yMax = 1;
+    // double xMin = -0.45;
+    // double xMax = -0.15;
+    // double yMin = 0.4;
+    // double yMax = .6;
+    double xMin = -2;
+    double xMax = 1;
+    double yMin = -1;
+    double yMax = 1;
     double ratio = 1.5;
     if(argc == 3){
         xRes = atoi(argv[1]);
@@ -389,7 +389,7 @@ uint doMath(double c_real, double c_imag , double thresh, uint iterationMax){
         complexAdd(&Zn,&C);
         complexPower(&Zn,2);
         // complexMult(&Zn,&var2);
-        complexAdd(&Zn,&var2);
+        // complexAdd(&Zn,&var2);
         // complexPower(&Zn,4);
         // complexPower(&Zn,6);
         // complexPower(&Zn,8);
